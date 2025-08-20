@@ -2,7 +2,7 @@
 // Complete HubSpot proxy routes to handle CORS issues
 
 import { z } from 'zod';
-import { publicProcedure } from '../../create-context';
+import { publicProcedure } from '../../../create-context';
 
 // Ensure environment variables are loaded
 const HUBSPOT_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
