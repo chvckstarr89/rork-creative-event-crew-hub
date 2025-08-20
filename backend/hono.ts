@@ -164,7 +164,7 @@ app.post("/webhooks/hubspot/test", async (c) => {
 
 // Simple health check endpoint
 app.get("/", (c) => {
-  return c.json({ status: "ok", message: "API is running" });
+  return c.json({ status: "ok", message: "API is running", timestamp: new Date().toISOString() });
 });
 
 // Test HubSpot endpoint for debugging
@@ -210,5 +210,25 @@ app.get("/test-hubspot", async (c) => {
     });
   }
 });
+
+// Start the server
+const port = process.env.PORT || 3001;
+
+console.log(`🚀 Starting server on port ${port}`);
+console.log(`🔗 Health check: http://localhost:${port}/api`);
+console.log(`🔗 tRPC endpoint: http://localhost:${port}/api/trpc`);
+console.log(`🔗 HubSpot test: http://localhost:${port}/api/test-hubspot`);
+
+// For Bun runtime
+if (typeof (globalThis as any).Bun !== 'undefined') {
+  (globalThis as any).Bun.serve({
+    port: Number(port),
+    fetch: app.fetch,
+  });
+  console.log(`✅ Hono server running on http://localhost:${port}/api`);
+} else {
+  // Fallback for Node.js
+  console.log('⚠️  Running in Node.js mode - consider using Bun for better performance');
+}
 
 export default app;

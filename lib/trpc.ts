@@ -19,8 +19,8 @@ const getBaseUrl = () => {
   // For Rork-hosted apps, the backend should be available at the same origin
   // but we need to check if we're in development or production
   if (__DEV__) {
-    // In development, try to connect to local backend if available
-    return 'http://localhost:3000';
+    // In development with Rork, use the tunnel URL
+    return 'https://019bvi5wn3qcubne9p8vk.rork.com';
   }
   
   // In production on Rork, use the current origin
