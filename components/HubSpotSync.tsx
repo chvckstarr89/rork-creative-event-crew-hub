@@ -16,10 +16,19 @@ import { useAuth } from '@/hooks/auth-store';
 // Get HubSpot token from Expo Constants
 function getHubSpotToken() {
   // Try multiple sources for the token - use the updated token from .env
-  return Constants.expoConfig?.extra?.EXPO_PUBLIC_HUBSPOT_TOKEN || 
-         Constants.manifest?.extra?.EXPO_PUBLIC_HUBSPOT_TOKEN ||
-         process.env.EXPO_PUBLIC_HUBSPOT_TOKEN ||
-         'pat-na1-93dc437c-5ac3-451f-9601-fceb1789a50f'; // Updated token from .env file
+  const token = Constants.expoConfig?.extra?.EXPO_PUBLIC_HUBSPOT_TOKEN || 
+                Constants.manifest?.extra?.EXPO_PUBLIC_HUBSPOT_TOKEN ||
+                (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_HUBSPOT_TOKEN) ||
+                'pat-na1-93dc437c-5ac3-451f-9601-fceb1789a50f'; // Updated token from .env file
+  
+  console.log('🔍 Token resolution debug:');
+  console.log('  - Constants.expoConfig?.extra:', !!Constants.expoConfig?.extra?.EXPO_PUBLIC_HUBSPOT_TOKEN);
+  console.log('  - Constants.manifest?.extra:', !!Constants.manifest?.extra?.EXPO_PUBLIC_HUBSPOT_TOKEN);
+  console.log('  - process.env available:', typeof process !== 'undefined');
+  console.log('  - process.env.EXPO_PUBLIC_HUBSPOT_TOKEN:', typeof process !== 'undefined' ? !!process.env?.EXPO_PUBLIC_HUBSPOT_TOKEN : 'N/A');
+  console.log('  - Final token source:', token === 'pat-na1-93dc437c-5ac3-451f-9601-fceb1789a50f' ? 'hardcoded fallback' : 'environment');
+  
+  return token;
 }
 
 // Test HubSpot token validity first
@@ -30,9 +39,9 @@ async function testTokenValidity(token: string) {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      },
-      ...(typeof window !== 'undefined' && { mode: 'cors' as RequestMode })
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
     });
     
     console.log('📡 Account info response status:', response.status);
@@ -79,7 +88,8 @@ async function testHubSpotDirectly() {
     
     const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts?limit=1', {
       method: 'GET',
-      headers
+      headers,
+      ...(typeof window !== 'undefined' && { mode: 'no-cors' as RequestMode })
     });
     
     console.log('Response status:', response.status);
@@ -118,6 +128,21 @@ async function testHubSpotDirectly() {
     
   } catch (error: any) {
     console.error('Network error:', error);
+    
+    // Handle specific web/CORS errors
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      return {
+        success: false,
+        error: 'CORS/Network Error',
+        message: 'Cannot make direct API calls to HubSpot from web browser due to CORS restrictions. This works on mobile devices.',
+        troubleshooting: [
+          'Test on a mobile device using the QR code',
+          'Use a backend proxy for web requests',
+          'HubSpot API requires server-side calls for web apps'
+        ]
+      };
+    }
+    
     return { 
       success: false, 
       error: error.message,
@@ -139,8 +164,7 @@ async function getSchemasDirect() {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      },
-      ...(typeof window !== 'undefined' && { mode: 'cors' as RequestMode })
+      }
     });
     
     console.log('📡 Schemas response status:', response.status);
@@ -222,8 +246,7 @@ async function searchContactByEmailDirect(email: string) {
           }]
         }],
         properties: ['firstname', 'lastname', 'email', 'company', 'phone']
-      }),
-      ...(typeof window !== 'undefined' && { mode: 'cors' as RequestMode })
+      })
     });
     
     console.log('📡 Contact search response status:', response.status);
@@ -362,9 +385,13 @@ export default function HubSpotSync() {
   const handleTestConnection = async () => {
     console.log('🔧 Starting HubSpot connection test...');
     console.log('🔍 Environment check:');
-    console.log('All EXPO PUBLIC vars:', Object.keys(process.env ?? {}).filter((key) => key.startsWith('EXPO_PUBLIC_')));
-    console.log('Token exists?', !!process.env.EXPO_PUBLIC_HUBSPOT_TOKEN);
-    console.log('Token length:', process.env.EXPO_PUBLIC_HUBSPOT_TOKEN?.length ?? 0);
+    
+    // Safe environment variable access
+    const envVars = typeof process !== 'undefined' && process.env ? 
+      Object.keys(process.env).filter((key) => key.startsWith('EXPO_PUBLIC_')) : [];
+    console.log('All EXPO PUBLIC vars:', envVars);
+    console.log('Token exists?', typeof process !== 'undefined' ? !!process.env?.EXPO_PUBLIC_HUBSPOT_TOKEN : 'process not available');
+    console.log('Token length:', typeof process !== 'undefined' ? (process.env?.EXPO_PUBLIC_HUBSPOT_TOKEN?.length ?? 0) : 'N/A');
     const token = getHubSpotToken();
     console.log('  - HubSpot token exists:', !!token);
     console.log('  - Token preview:', token ? `${token.substring(0, 15)}...` : 'NOT FOUND');
@@ -373,7 +400,8 @@ export default function HubSpotSync() {
     console.log('  - Token format valid:', token?.startsWith('pat-') || false);
     console.log('  - Constants.expoConfig?.extra:', Constants.expoConfig?.extra);
     console.log('  - Constants.manifest?.extra:', Constants.manifest?.extra);
-    console.log('  - process.env.EXPO_PUBLIC_HUBSPOT_TOKEN:', !!process.env.EXPO_PUBLIC_HUBSPOT_TOKEN);
+    console.log('  - process.env.EXPO_PUBLIC_HUBSPOT_TOKEN:', typeof process !== 'undefined' ? !!process.env?.EXPO_PUBLIC_HUBSPOT_TOKEN : 'process not available');
+    console.log('  - Platform:', typeof window !== 'undefined' ? 'web' : 'native');
     
     try {
       console.log('📡 Making direct API call to HubSpot...');

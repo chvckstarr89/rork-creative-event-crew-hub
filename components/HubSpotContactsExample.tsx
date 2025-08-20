@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 
+// Get HubSpot token safely
+function getHubSpotToken() {
+  // Try multiple sources for the token
+  return (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_HUBSPOT_TOKEN) ||
+         'pat-na1-93dc437c-5ac3-451f-9601-fceb1789a50f'; // Fallback token from .env
+}
+
 // Direct HubSpot API functions
 async function testHubSpotDirectly() {
-  const token = process.env.EXPO_PUBLIC_HUBSPOT_TOKEN;
+  const token = getHubSpotToken();
   
   if (!token) {
+    console.error('No HubSpot token in environment');
     return { 
       success: false, 
       error: 'HubSpot token not configured',
@@ -39,6 +47,17 @@ async function testHubSpotDirectly() {
       };
     }
   } catch (error: any) {
+    console.error('Network error:', error);
+    
+    // Handle specific web/CORS errors
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      return {
+        success: false,
+        error: 'CORS/Network Error',
+        message: 'Cannot make direct API calls to HubSpot from web browser due to CORS restrictions. This works on mobile devices.'
+      };
+    }
+    
     return { 
       success: false, 
       error: error.message,
@@ -48,7 +67,7 @@ async function testHubSpotDirectly() {
 }
 
 async function getSchemasDirect() {
-  const token = process.env.EXPO_PUBLIC_HUBSPOT_TOKEN;
+  const token = getHubSpotToken();
   
   if (!token) return { success: false, error: 'No token configured' };
   
@@ -67,12 +86,23 @@ async function getSchemasDirect() {
       return { success: false, error: `API Error: ${response.status}` };
     }
   } catch (error: any) {
+    console.error('Network error:', error);
+    
+    // Handle specific web/CORS errors
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      return {
+        success: false,
+        error: 'CORS/Network Error',
+        message: 'Cannot make direct API calls to HubSpot from web browser due to CORS restrictions.'
+      };
+    }
+    
     return { success: false, error: error.message };
   }
 }
 
 async function getObjectsDirect(objectType: string) {
-  const token = process.env.EXPO_PUBLIC_HUBSPOT_TOKEN;
+  const token = getHubSpotToken();
   
   if (!token) return { success: false, error: 'No token configured' };
   
@@ -91,12 +121,23 @@ async function getObjectsDirect(objectType: string) {
       return { success: false, error: `API Error: ${response.status}` };
     }
   } catch (error: any) {
+    console.error('Network error:', error);
+    
+    // Handle specific web/CORS errors
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      return {
+        success: false,
+        error: 'CORS/Network Error',
+        message: 'Cannot make direct API calls to HubSpot from web browser due to CORS restrictions.'
+      };
+    }
+    
     return { success: false, error: error.message };
   }
 }
 
 async function getServicesDirect() {
-  const token = process.env.EXPO_PUBLIC_HUBSPOT_TOKEN;
+  const token = getHubSpotToken();
   
   if (!token) return { success: false, error: 'No token configured' };
   
@@ -118,6 +159,17 @@ async function getServicesDirect() {
       return { success: false, error: `API Error: ${response.status}` };
     }
   } catch (error: any) {
+    console.error('Network error:', error);
+    
+    // Handle specific web/CORS errors
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      return {
+        success: false,
+        error: 'CORS/Network Error',
+        message: 'Cannot make direct API calls to HubSpot from web browser due to CORS restrictions.'
+      };
+    }
+    
     return { success: false, error: error.message };
   }
 }
