@@ -1,3 +1,4 @@
+import { HubSpotContactsExample } from '@/components/HubSpotContactsExample';
 import { Redirect } from 'expo-router';
 import { useAuth } from '@/hooks/auth-store';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -17,7 +18,9 @@ export default function IndexScreen() {
   if (!isAuthenticated) {
     return <Redirect href="/role-select" />;
   }
-
+  
+		<HubSpotContactsExample />
+  
   // Check if user needs to check in for today's events
   // For now, always show check-in after login - in a real app you'd check if they've already checked in today
   return <Redirect href="/check-in" />;
