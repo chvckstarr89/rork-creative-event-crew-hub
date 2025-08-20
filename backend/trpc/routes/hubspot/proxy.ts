@@ -8,6 +8,10 @@ import { publicProcedure } from '../../create-context';
 const HUBSPOT_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
 const HUBSPOT_BASE_URL = 'https://api.hubapi.com';
 
+console.log('🔍 Environment check in proxy:');
+console.log('- HUBSPOT_ACCESS_TOKEN present:', !!process.env.HUBSPOT_ACCESS_TOKEN);
+console.log('- Token preview:', process.env.HUBSPOT_ACCESS_TOKEN?.substring(0, 15) + '...');
+
 if (!HUBSPOT_TOKEN) {
   console.error('❌ CRITICAL: HUBSPOT_ACCESS_TOKEN not found in environment');
 }

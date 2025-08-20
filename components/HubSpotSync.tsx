@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
-import { trpc } from '@/lib/trpc';
+import { trpcClient } from '@/lib/trpc';
 
 interface SyncData {
   contacts?: number;
@@ -26,25 +26,10 @@ export default function HubSpotSync() {
   const [syncData, setSyncData] = useState<SyncData | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error' | null>(null);
 
-  // Use tRPC hooks for HubSpot operations
-  const testConnection = trpc.hubspot.testConnection.useMutation();
-  const getContacts = trpc.hubspot.getContacts.useQuery(
-    { limit: 5 },
-    { enabled: false } // Only fetch when triggered
-  );
-  const getDeals = trpc.hubspot.getDeals.useQuery(
-    { limit: 5 },
-    { enabled: false }
-  );
-  const getSchemas = trpc.hubspot.getSchemas.useQuery(
-    undefined,
-    { enabled: false }
-  );
-
   const handleTestConnection = async () => {
     setIsLoading(true);
     try {
-      const result = await testConnection.mutateAsync();
+      const result = await trpcClient.hubspot.testConnection.query();
       
       if (result.success) {
         setConnectionStatus('connected');
@@ -61,14 +46,23 @@ export default function HubSpotSync() {
           [{ text: 'OK' }]
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       setConnectionStatus('error');
       console.error('Connection test error:', error);
-      Alert.alert(
-        'Connection Error',
-        'Failed to test HubSpot connection. Please check your configuration.',
-        [{ text: 'OK' }]
-      );
+      
+      if (error.message?.includes('Backend not deployed') || error.message?.includes('404')) {
+        Alert.alert(
+          'Backend Not Available',
+          'The backend server is not running. This is normal for Rork-hosted apps without a deployed backend service.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Connection Error',
+          'Failed to test HubSpot connection. Please check your configuration.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +72,7 @@ export default function HubSpotSync() {
     setIsLoading(true);
     try {
       // Test connection first
-      const connectionResult = await testConnection.mutateAsync();
+      const connectionResult = await trpcClient.hubspot.testConnection.query();
       
       if (!connectionResult.success) {
         Alert.alert('Connection Failed', 'Please configure HubSpot connection first');
@@ -87,25 +81,25 @@ export default function HubSpotSync() {
 
       // Fetch data in parallel
       const [contactsResult, dealsResult, schemasResult] = await Promise.allSettled([
-        getContacts.refetch(),
-        getDeals.refetch(),
-        getSchemas.refetch()
+        trpcClient.hubspot.getContacts.query({ limit: 5 }),
+        trpcClient.hubspot.getDeals.query({ limit: 5 }),
+        trpcClient.hubspot.getSchemas.query()
       ]);
 
       const newSyncData: SyncData = {
         lastSync: new Date().toISOString()
       };
 
-      if (contactsResult.status === 'fulfilled' && contactsResult.value?.data) {
-        newSyncData.contacts = contactsResult.value.data.total || 0;
+      if (contactsResult.status === 'fulfilled' && contactsResult.value) {
+        newSyncData.contacts = contactsResult.value.total || 0;
       }
 
-      if (dealsResult.status === 'fulfilled' && dealsResult.value?.data) {
-        newSyncData.deals = dealsResult.value.data.total || 0;
+      if (dealsResult.status === 'fulfilled' && dealsResult.value) {
+        newSyncData.deals = dealsResult.value.total || 0;
       }
 
-      if (schemasResult.status === 'fulfilled' && schemasResult.value?.data?.success) {
-        newSyncData.customObjects = schemasResult.value.data.customObjects || [];
+      if (schemasResult.status === 'fulfilled' && schemasResult.value?.success) {
+        newSyncData.customObjects = schemasResult.value.customObjects || [];
       }
 
       setSyncData(newSyncData);
@@ -119,13 +113,22 @@ export default function HubSpotSync() {
         `• ${newSyncData.customObjects?.length || 0} custom object types`,
         [{ text: 'OK' }]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sync error:', error);
-      Alert.alert(
-        'Sync Failed',
-        'Failed to sync with HubSpot. Please try again.',
-        [{ text: 'OK' }]
-      );
+      
+      if (error.message?.includes('Backend not deployed') || error.message?.includes('404')) {
+        Alert.alert(
+          'Backend Not Available',
+          'The backend server is not running. This is normal for Rork-hosted apps without a deployed backend service.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Sync Failed',
+          'Failed to sync with HubSpot. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +174,7 @@ export default function HubSpotSync() {
           onPress={handleTestConnection}
           disabled={isLoading}
         >
-          {isLoading && testConnection.isLoading ? (
+          {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
@@ -186,7 +189,7 @@ export default function HubSpotSync() {
           onPress={handleSync}
           disabled={isLoading || connectionStatus !== 'connected'}
         >
-          {isLoading && !testConnection.isLoading ? (
+          {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
@@ -289,7 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   syncButton: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.accent,
   },
   buttonText: {
     color: '#fff',
