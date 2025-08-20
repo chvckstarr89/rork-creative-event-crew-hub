@@ -204,7 +204,7 @@ export const createContactProcedure = publicProcedure
     lastname: z.string().optional(),
     phone: z.string().optional(),
     company: z.string().optional(),
-    properties: z.record(z.any()).optional()
+    properties: z.record(z.string(), z.any()).optional()
   }))
   .mutation(async ({ input }) => {
     const properties = {
@@ -223,7 +223,7 @@ export const createContactProcedure = publicProcedure
 export const updateContactProcedure = publicProcedure
   .input(z.object({
     contactId: z.string(),
-    properties: z.record(z.any())
+    properties: z.record(z.string(), z.any())
   }))
   .mutation(async ({ input }) => {
     return await makeHubSpotRequest(
